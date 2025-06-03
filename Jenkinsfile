@@ -1,8 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "avihay1997/buildyourpc-backend"
+    }
+
     stages {
-        stage('Clone') {
+        stage('Clone Repository') {
             steps {
                 git 'https://github.com/Avihay1997/BuildYourOwnPC.git'
             }
@@ -11,14 +15,21 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build('buildyourownpc-backend')
+                    docker.build("${IMAGE_NAME}:latest", "./backend")
                 }
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Push to Docker Hub') {
             steps {
-                sh 'docker compose up -d'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    script {
+                        sh """
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${IMAGE_NAME}:latest
+                        """
+                    }
+                }
             }
         }
     }
